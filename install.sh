@@ -298,4 +298,7 @@ else
     log_success "AstroNvim installed!"
 fi
 
+# Configure Git credentials
+git config --global user.email "juan.zanelli@ing.austral.edu.ar"
+
 log_success "Installation complete!"
