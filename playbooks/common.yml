@@ -1,0 +1,41 @@
+- hosts: localhost
+  tasks:
+  - name: Install Homebrew Packages
+    become: false  
+    community.general.homebrew:
+      name: "{{ item }}"
+      state: present
+    vars:
+      packages:
+      - fzf
+      - ripgrep
+      - tldr
+      - bat
+      - tmux
+      - wget
+
+    loop: "{{ packages }}"
+
+  - name: Install Homebrew Casks
+    become: false  
+    community.general.homebrew_cask:
+      name: "{{ item }}"
+      state: present
+    vars:
+      casks:
+      - iterm2
+      - whatsapp
+      - discord
+      - slack
+      - zoom
+      - visual-studio-code
+      - docker
+      - jetbrains-toolbox
+      - postman
+      - figma
+      - spotify
+      - arc
+      - google-drive
+      - swish
+    loop: "{{ casks }}"
+
