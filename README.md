@@ -34,6 +34,7 @@ ansible-playbook playbooks/node.yml    # For Node.js development
 ansible-playbook playbooks/java.yml    # For Java development
 ansible-playbook playbooks/zsh.yml     # For Zsh configuration
 ansible-playbook playbooks/tmux.yml    # For Tmux configuration
+ansible-playbook playbooks/macos.yml   # For macOS system configuration
 ```
 
 ## Managing Dotfiles with Chezmoi
@@ -65,6 +66,7 @@ The installation process uses several Ansible playbooks:
 - `java.yml`: Java development environment
 - `zsh.yml`: Zsh shell configuration
 - `tmux.yml`: Tmux configuration
+- `macos.yml`: macOS system configuration (Dock, Trackpad, Menubar settings)
 
 ## Chezmoi Daily Usage Guide
 
