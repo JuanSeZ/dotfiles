@@ -1,0 +1,9 @@
+.git/
+.gitignore
+.chezmoi.toml
+.chezmoiignore
+README.md
+LICENSE
+old-scripts/
+playbooks/
+.ansible/ 
