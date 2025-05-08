@@ -53,7 +53,7 @@ fi
 log_success "Prerequisites installation complete! 🎉"
 log_info "You can now clone the dotfiles repository and run the Ansible playbooks."
 log_info "Run the following commands:"
-log_info "  1. git clone https://github.com/yourusername/dotfiles.git ~/dotfiles"
+log_info "  1. git clone https://github.com/JuanSeZ/dotfiles.git ~/dotfiles"
 log_info "  2. cd ~/dotfiles"
 log_info "  3. ansible-playbook playbooks/chezmoi.yml"
 log_info "  4. ansible-playbook playbooks/common.yml" 

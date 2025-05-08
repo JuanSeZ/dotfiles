@@ -11,7 +11,7 @@ The setup process is split into two steps:
 First, install Homebrew and Ansible by running:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/dotfiles/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/JuanSeZ/dotfiles/main/install.sh | bash
 ```
 
 ### 2. Set Up Your Environment
@@ -20,7 +20,7 @@ After installing the prerequisites, set up your environment:
 
 ```bash
 # Clone this repository
-git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
+git clone https://github.com/JuanSeZ/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # Set up Chezmoi and dotfiles
