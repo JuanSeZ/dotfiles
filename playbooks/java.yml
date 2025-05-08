@@ -1,0 +1,44 @@
+- hosts: localhost
+  tasks:
+    - name: Ensure Homebrew is installed
+      community.general.homebrew:
+        update_homebrew: yes
+
+    - name: Install Maven and Gradle using Homebrew
+      community.general.homebrew:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - maven
+        - gradle
+
+    - name: Check if SDKMAN is already installed
+      stat:
+        path: "{{ ansible_env.HOME }}/.sdkman"
+      register: sdkman_exists
+
+    - name: Install SDKMAN if not installed
+      shell: |
+        curl -s "https://get.sdkman.io" | bash
+      when: not sdkman_exists.stat.exists
+      args:
+        executable: /bin/zsh
+
+    - name: Source SDKMAN init script
+      shell: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+      args:
+        executable: /bin/zsh
+      ignore_errors: yes  # To avoid failure if SDKMAN is already sourced
+
+    - name: Install Java via SDKMAN
+      shell: |
+        source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk install java
+      args:
+        executable: /bin/zsh
+      register: java_installation
+
+    - name: Show Java installation result
+      debug:
+        msg: "{{ java_installation.stdout }}"
+

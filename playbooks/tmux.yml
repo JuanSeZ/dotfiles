@@ -1,0 +1,15 @@
+- hosts: localhost
+  tasks:
+    - name: Install tmux
+      become: false
+      community.general.homebrew:
+        name: "tmux"
+        state: present
+
+    - name: Install tpm
+      ansible.builtin.git:
+        repo: https://github.com/tmux-plugins/tpm
+        dest:
+          ~/.tmux/plugins/tpm
+
+          # Create a new task that it copies the tmux conf and pastes it
