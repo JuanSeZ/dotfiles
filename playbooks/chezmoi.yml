@@ -17,7 +17,7 @@
     - name: Copy Chezmoi configuration files
       become: false
       copy:
-        src: "{{ playbook_dir }}/../{{ item.src }}"
+        src: "{{ playbook_dir }}/../dotfiles/{{ item.src }}"
         dest: "{{ item.dest }}"
         mode: '0644'
       with_items:
