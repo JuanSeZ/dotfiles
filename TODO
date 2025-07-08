@@ -1,1 +1,4 @@
 TODO: 
+- Move every config here and stow it
+- Add readme again and explain how to use stow in there
+- BREWFILE for everything instead of a bash script
