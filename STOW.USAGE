@@ -1,0 +1,7 @@
+STOW USAGE 
+- Para usar stow muevo primero la configuracion a este repo
+- La naming convention funciona asi -> ~/.config/nvim == nvim/.config/nvim
+- Despues corro "stow nvim" y te podes fijar si tiras un "ls -l" en .config que es un symlink a ese file.
+
+Y si lo quiero aplicar en otra compu tiro literal el comando stow + la config que quiero
+
