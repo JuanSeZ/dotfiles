@@ -35,10 +35,24 @@ return {
           source = true,
         },
       })
+
       local capabilities = require('blink.cmp').get_lsp_capabilities()
       local lspconfig = require("lspconfig")
-      lspconfig.lua_ls.setup { capabilities = capabilities }
-      lspconfig.basedpyright.setup { capabilities = capabilities }
+
+      -- Add any extra language-servers in here -- can add settings too
+      local servers = {
+        lua_ls = {},
+        basedpyright = {},
+        terraformls = {},
+      }
+
+      for name, opts in pairs(servers) do
+        opts.capabilities = capabilities
+        lspconfig[name].setup(opts)
+      end
+
+
+      -- Formatting on save
       vim.api.nvim_create_autocmd('LspAttach', {
         group = vim.api.nvim_create_augroup('my.lsp', {}),
         callback = function(args)
