@@ -42,7 +42,14 @@ return {
       -- Add any extra language-servers in here -- can add settings too
       local servers = {
         lua_ls = {},
-        basedpyright = {},
+        basedpyright = {
+          settings = {
+            basedpyright = {
+              typeCheckingMode = "basic",
+              reportMissingTypeStubs = false,
+            }
+          }
+        },
         terraformls = {},
       }
 
