@@ -1,0 +1,87 @@
+{
+  "profiles": [
+    {
+      "name": "Default profile",
+      "selected": true,
+      "virtual_hid_keyboard": {
+        "keyboard_type_v2": "ansi"
+      },
+      "simple_modifications": {},
+      "complex_modifications": {
+        "rules": [
+          {
+            "description": "Remap Logitech G Pro keys to Mac layout",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "left_alt"
+                },
+                "to": [
+                  {
+                    "key_code": "left_command"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1133,
+                        "product_id": 49977
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "left_gui"
+                },
+                "to": [
+                  {
+                    "key_code": "left_option"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1133,
+                        "product_id": 49977
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "right_alt"
+                },
+                "to": [
+                  {
+                    "key_code": "right_command"
+                  }
+                ],
+                "conditions": [
+                  {
+                    "type": "device_if",
+                    "identifiers": [
+                      {
+                        "vendor_id": 1133,
+                        "product_id": 49977
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
