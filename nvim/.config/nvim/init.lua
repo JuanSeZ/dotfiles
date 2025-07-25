@@ -5,6 +5,8 @@ require("config.lazy")
 -- Source file
 vim.keymap.set("n", "<space><space>x", "<cmd>source %<CR>")
 
+-- Make clipboard share same memory
+vim.o.clipboard = "unnamedplus"
 
 -- Highlight when yanking
 vim.api.nvim_create_autocmd("TextYankPost", {
