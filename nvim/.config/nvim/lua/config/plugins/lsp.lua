@@ -1,4 +1,39 @@
+-- Add any extra language-servers in here -- can add settings too
+local servers = {
+  lua_ls = {},
+  basedpyright = {
+    settings = {
+      basedpyright = {
+        typeCheckingMode = "basic",
+        reportMissingTypeStubs = false,
+      }
+    }
+  },
+  terraformls = {},
+}
+
 return {
+  {
+    "mason-org/mason.nvim",
+    opts = {}
+  },
+  {
+    "mason-org/mason-lspconfig.nvim",
+    opts = {},
+    dependencies = {
+      { "mason-org/mason.nvim", opts = {} },
+      "neovim/nvim-lspconfig",
+    },
+    config = function()
+      require("mason").setup()
+      require("mason-lspconfig").setup({
+        automatic_enable = vim.tbl_keys(servers),
+        ensure_installed = vim.tbl_keys(servers),
+        automatic_installation = false
+      })
+    end
+
+  },
   {
     "neovim/nvim-lspconfig",
     dependencies = {
@@ -13,10 +48,12 @@ return {
           },
         },
       },
+      -- Completion Plugin
       { 'saghen/blink.cmp' },
     },
     config = function()
       -- Configure diagnostic signs and virtual text
+      -- TODO: Check how Kickstart-Nvim does this
       vim.diagnostic.config({
         virtual_text = true,
         signs = {
@@ -39,19 +76,6 @@ return {
       local capabilities = require('blink.cmp').get_lsp_capabilities()
       local lspconfig = require("lspconfig")
 
-      -- Add any extra language-servers in here -- can add settings too
-      local servers = {
-        lua_ls = {},
-        basedpyright = {
-          settings = {
-            basedpyright = {
-              typeCheckingMode = "basic",
-              reportMissingTypeStubs = false,
-            }
-          }
-        },
-        terraformls = {},
-      }
 
       for name, opts in pairs(servers) do
         opts.capabilities = capabilities
