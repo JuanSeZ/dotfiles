@@ -6,10 +6,11 @@ return {
 
       null_ls.setup({
         sources = {
+          -- NOTE: Check lsp.lua to not have duplicated formatters - Null_ls is to tools that have their one cli and not a lsp
           null_ls.builtins.formatting.stylua,
           -- null_ls.builtins.completion.spell,
         },
       })
-    end
-  }
+    end,
+  },
 }
