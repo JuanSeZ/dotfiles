@@ -1,6 +1,9 @@
 return {
   {
     "nvimtools/none-ls.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+    },
     config = function()
       local null_ls = require("null-ls")
 
@@ -11,6 +14,6 @@ return {
           -- null_ls.builtins.completion.spell,
         },
       })
-    end,
-  },
+    end
+  }
 }
