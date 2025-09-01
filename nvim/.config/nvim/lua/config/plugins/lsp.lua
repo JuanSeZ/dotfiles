@@ -1,15 +1,9 @@
 -- Add any extra language-servers in here -- can add settings too
 local servers = {
   lua_ls = {},
-  basedpyright = {
-    settings = {
-      basedpyright = {
-        typeCheckingMode = "basic",
-        reportMissingTypeStubs = false,
-      },
-    },
-  },
-  terraformls = {},
+  pyright = {},
+  terraformls = {},  
+  rust_analyzer = {},
 }
 
 return {
