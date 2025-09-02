@@ -105,4 +105,33 @@ vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right win
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
+-- Keybinds to test
+
+local map = vim.keymap.set
+-- -- Run the nearest test
+map("n", "<leader>tn", function()
+  require("neotest").run.run()
+end, { desc = "Run nearest test" })
+
+-- Debug the nearest test
+map("n", "<leader>td", function()
+  require("neotest").run.run({ strategy = "dap" })
+end, { desc = "Debug nearest test" })
+
+-- Run the entire test file
+map("n", "<leader>tf", function()
+  require("neotest").run.run(vim.fn.expand("%"))
+end, { desc = "Run file" })
+
+-- Stop the nearest test
+map("n", "<leader>ts", function()
+  require("neotest").run.stop()
+end, { desc = "Stop nearest test" })
+
+map("n", "<leader>to", function()
+  require("neotest").run.run({
+    extra_args = { "--record-mode=rewrite", "-v", "-s" },
+  })
+end, { desc = "Run nearest test (Overwrite mode)" })
+
 require("config.lazy")
