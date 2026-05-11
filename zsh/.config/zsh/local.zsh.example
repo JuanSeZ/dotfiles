@@ -1,0 +1,11 @@
+# Copy this file to local.zsh for machine-specific overrides.
+# Do not commit local.zsh.
+
+# Examples:
+# export EDITOR="nvim"
+# export PATH="$HOME/work/bin:$PATH"
+# alias ll="ls -la"
+
+# pi() {
+#   command pi --no-skills --skill "$HOME/.pi/agent/skills" "$@"
+# }
