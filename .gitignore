@@ -3,3 +3,6 @@ zsh/.config/zsh/local.zsh
 
 # Generated zsh completion caches
 zsh/.zcompdump*
+
+# Local scratch/plans
+/tmp/

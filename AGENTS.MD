@@ -28,9 +28,14 @@ Current packages:
 
 `STOW.USAGE` has the owner’s short Stow notes. `TODO` tracks future cleanup ideas.
 
+Machine-level dependencies are declared in `Brewfile`. Use `brew bundle` (or `just install`) to install them; `./bootstrap.sh` is a first-run helper that requires Homebrew, runs `brew bundle`, then `just check`. Use `just update` to update Homebrew metadata, upgrade installed packages/casks, sync the Brewfile, and clean up. Shell startup files should only initialize tools when present and must not install software.
+
+Common repo commands live in `justfile`. Bulk Stow recipes derive active top-level packages automatically and skip entries listed in `.stow-excludes` (currently `lazy-nvim` and `tmp`).
+
 ## General practices
 
 - Preserve the Stow mirror layout. New home-directory files should live under the package path that matches the target path.
+- Keep machine-level dependencies in `Brewfile`; do not add package installation to zsh startup files.
 - Prefer small, focused edits. This is a personal dotfiles repo, so avoid broad rewrites unless asked.
 - Do not commit machine-local secrets or overrides.
 - Keep generated/local files ignored:
@@ -45,11 +50,21 @@ Current packages:
 Use the narrowest validation possible for the package you changed:
 
 ```sh
+# Show available repo recipes
+just --list
+
 # Check Stow link plan for a package
 stow -nv <package>
+# or
+just preview <package>
+
+# Check the normal active Stow package set
+just check-stow
 
 # Check Lua formatting/config style if editing custom Neovim Lua
 stylua --check nvim/.config/nvim
+# or
+just check-nvim
 
 # Open Neovim health/plugin UI manually when needed
 nvim
@@ -58,6 +73,7 @@ nvim
 Useful syntax checks:
 
 ```sh
+just check-zsh
 zsh -n zsh/.zshrc zsh/.zprofile zsh/.zshenv zsh/.config/zsh/*.zsh zsh/.config/zsh/tools/*.zsh
 tmux source-file tmux/.tmux.conf
 ```

@@ -1,7 +1,6 @@
 TODO: 
 - Move every config here and stow it
-- Add readme again and explain how to use stow in there
-- BREWFILE for everything instead of a bash script
+- Add README again and explain Stow/Brewfile/just bootstrap flow
 - Ver una manera de que en base a los cambios se apliquen solos y en los otros lados que se pulleen
 - Centralizar tema de prompt y plugins de zsh
 - Ver de limpiar y dejar mejor el .zshrc
