@@ -15,15 +15,25 @@ packages:
     echo {{active_packages}}
 
 # Install Homebrew dependencies from Brewfile.
-install:
+install-tools:
     brew bundle
 
+# Install gh extensions that Homebrew Bundle cannot manage.
+install-gh-dash:
+    if gh extension list | grep -q 'dlvhdr/gh-dash'; then gh extension upgrade gh-dash || true; else gh extension install dlvhdr/gh-dash; fi
+
+# Install Homebrew dependencies and gh extensions.
+install: install-tools install-gh-dash
+
 # Update Homebrew metadata, upgrade installed packages/casks, sync Brewfile, and clean up.
-update:
+update-tools:
     brew update
     brew upgrade
     brew bundle
     brew cleanup
+
+# Update Homebrew dependencies and gh extensions.
+update: update-tools install-gh-dash
 
 # Preview stowing one package.
 preview package:

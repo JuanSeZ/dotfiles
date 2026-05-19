@@ -18,8 +18,11 @@ Current packages:
 
 - `aerospace/` → AeroSpace tiling window manager config.
 - `ghostty/` → Ghostty terminal config and themes.
+- `gh-dash/` → GitHub CLI dashboard config.
+- `git/` → XDG Git config for Hunk as the Git pager.
 - `ideavimrc/` → JetBrains IdeaVim config.
 - `karabiner/` → Karabiner-Elements config and backup.
+- `lazygit/` → Lazygit UI and delta pager config.
 - `nvim/` → current custom Neovim config.
 - `lazy-nvim/` → alternate LazyVim-based Neovim config. Do not stow this together with `nvim`; both target `~/.config/nvim`.
 - `starship/` → Starship prompt config.
@@ -28,7 +31,7 @@ Current packages:
 
 `STOW.USAGE` has the owner’s short Stow notes. `TODO` tracks future cleanup ideas.
 
-Machine-level dependencies are declared in `Brewfile`. Use `brew bundle` (or `just install`) to install them; `./bootstrap.sh` is a first-run helper that requires Homebrew, runs `brew bundle`, then `just check`. Use `just update` to update Homebrew metadata, upgrade installed packages/casks, sync the Brewfile, and clean up. Shell startup files should only initialize tools when present and must not install software.
+Machine-level dependencies are declared in `Brewfile`. Use `brew bundle` (or `just install`) to install them; `just install` also installs the `dlvhdr/gh-dash` GitHub CLI extension because Homebrew Bundle does not manage `gh` extensions. `./bootstrap.sh` is a first-run helper that requires Homebrew, runs `brew bundle`, installs `gh-dash`, then runs `just check`. Use `just update` to update Homebrew metadata, upgrade installed packages/casks, sync the Brewfile, update `gh-dash`, and clean up. Shell startup files should only initialize tools when present and must not install software.
 
 Common repo commands live in `justfile`. Bulk Stow recipes derive active top-level packages automatically and skip entries listed in `.stow-excludes` (currently `lazy-nvim` and `tmp`).
 
@@ -177,6 +180,14 @@ Keep `run '~/.tmux/plugins/tpm/tpm'` at the very bottom.
 
 - Kubernetes is enabled and has a context alias/style for `production`.
 - This repo assumes Nerd Fonts are available.
+
+## Git, Lazygit, and GitHub dashboard packages
+
+`git/.config/git/config` configures `hunk pager` as the default Git pager, so `git diff`, `git show`, and the `git hdiff`/`git hshow` aliases open in Hunk.
+
+`lazygit/.config/lazygit/config.yml` uses a OneDark Cool-inspired palette and configures Lazygit paging through `delta --dark --paging=never --syntax-theme=OneHalfDark`. `zsh/.config/zsh/env.zsh` sets `XDG_CONFIG_HOME=$HOME/.config` so Lazygit uses the tracked XDG config path on macOS.
+
+`gh-dash/.config/gh-dash/config.yml` defines broad personal PR/issue sections and adds an `H` keybinding that pipes `gh pr diff` into `hunk patch -`. `gh-dash` itself is installed as a GitHub CLI extension by `just install-gh-dash`; it is not a Homebrew formula.
 
 ## Ghostty package
 

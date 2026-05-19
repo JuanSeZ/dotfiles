@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://gh-dash.dev/schema.json
+prSections:
+  - title: Mine
+    filters: is:open author:@me archived:false sort:updated-desc
+  - title: Review
+    filters: is:open review-requested:@me archived:false sort:updated-desc
+  - title: Mentioned
+    filters: is:open mentions:@me archived:false sort:updated-desc
+
+issuesSections:
+  - title: Assigned
+    filters: is:open assignee:@me archived:false sort:updated-desc
+  - title: Created
+    filters: is:open author:@me archived:false sort:updated-desc
+
+defaults:
+  view: prs
+  refetchIntervalMinutes: 10
+  prsLimit: 30
+  issuesLimit: 30
+  preview:
+    open: true
+  layout:
+    prs:
+      repoName:
+        grow: true
+      author:
+        hidden: true
+      base:
+        hidden: true
+    issues:
+      repoName:
+        grow: true
+      author:
+        hidden: true
+
+keybindings:
+  prs:
+    - key: H
+      name: hunk diff
+      command: >
+        gh pr diff {{.PrNumber}} --repo {{.RepoName}} | hunk patch -

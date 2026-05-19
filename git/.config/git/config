@@ -1,0 +1,12 @@
+[core]
+	pager = hunk pager
+
+[merge]
+	conflictstyle = zdiff3
+
+[diff]
+	colorMoved = default
+
+[alias]
+	hdiff = diff
+	hshow = show

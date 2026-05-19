@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+gui:
+  nerdFontsVersion: "3"
+  theme:
+    activeBorderColor:
+      - "#61afef"
+      - bold
+    inactiveBorderColor:
+      - "#5c6370"
+    searchingActiveBorderColor:
+      - "#e5c07b"
+      - bold
+    optionsTextColor:
+      - "#56b6c2"
+    selectedLineBgColor:
+      - "#3e4452"
+    inactiveViewSelectedLineBgColor:
+      - "#242b38"
+    cherryPickedCommitFgColor:
+      - "#61afef"
+    cherryPickedCommitBgColor:
+      - "#3e4452"
+    markedBaseCommitFgColor:
+      - "#e5c07b"
+    markedBaseCommitBgColor:
+      - "#3e4452"
+    unstagedChangesColor:
+      - "#e06c75"
+    defaultFgColor:
+      - "#abb2bf"
+git:
+  pagers:
+    - colorArg: always
+      pager: delta --dark --paging=never --syntax-theme=OneHalfDark
+customCommands:
+  - key: H
+    context: files
+    command: hunk diff --watch
+    description: Open working tree in Hunk
+    output: terminal
+  - key: H
+    context: commits
+    command: hunk show {{.SelectedCommit.Hash}}
+    description: Open commit in Hunk
+    output: terminal
