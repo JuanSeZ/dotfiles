@@ -156,6 +156,7 @@ Practices:
 
 - Put shared, portable changes in the appropriate module.
 - Put machine-specific aliases/secrets/PATH entries in `local.zsh` only; update `local.zsh.example` if the pattern should be documented.
+- `local.zsh.example` includes a `kh` alias example for a local homelab kubeconfig; keep the active alias in ignored `local.zsh`.
 - Guard optional tools with `command -v` or file checks, as existing modules do.
 - Keep `.zshenv` minimal.
 

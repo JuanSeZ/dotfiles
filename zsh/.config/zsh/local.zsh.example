@@ -5,6 +5,7 @@
 # export EDITOR="nvim"
 # export PATH="$HOME/work/bin:$PATH"
 # alias ll="ls -la"
+# alias kh='KUBECONFIG=~/.kube/homelab.yaml kubectl'
 
 # pi() {
 #   command pi --no-skills --skill "$HOME/.pi/agent/skills" "$@"
