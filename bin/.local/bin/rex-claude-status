@@ -5,10 +5,12 @@
 # ~/.claude/settings.json, with the hook's JSON on stdin:
 #
 #   rex-claude-status working|done|idle|error|clear
-#   rex-claude-status permission     PermissionRequest: blocked on an approval
+#   rex-claude-status permission     PermissionRequest: blocked on an approval, or
+#                                    on an answer when the tool is AskUserQuestion
 #   rex-claude-status question       PreToolUse on AskUserQuestion: blocked on an answer
 #   rex-claude-status notification   Notification: blocked if it asks for something
 #
+# Blocked, done and error also ask Rex for a macOS notification (OSC 777).
 # It prints nothing and always exits 0, so it never changes what Claude does.
 
 # Only inside Rex; other terminals would ignore the sequence anyway
@@ -19,11 +21,18 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 state=${1:-} kind="" msg=""
 case $state in
   working | done | idle | error | clear) ;;
-  permission)
-    state=blocked kind=permission
-    msg="Permission to use $(jq -r '.tool_name // "a tool"' <<< "$input" 2> /dev/null)"
+  permission | question)
+    # what Claude wants, in a line: the command, the file, the question...
+    state=blocked
+    kind=$(jq -r 'if .tool_name == "AskUserQuestion" then "question" else "permission" end' <<< "$input" 2> /dev/null)
+    msg=$(jq -r '(.tool_input // {}) as $in
+      | if .tool_name == "Bash" then "Run: " + ($in.command // "" | split("\n")[0])
+        elif .tool_name == "AskUserQuestion" then $in.questions[0].question // "Claude has a question"
+        elif (.tool_name // "" | test("^(Edit|MultiEdit|Write|NotebookEdit)$")) then
+          "Edit " + ($in.file_path // $in.notebook_path // "a file" | split("/") | last)
+        elif .tool_name == "WebFetch" then "Fetch " + ($in.url // "a page")
+        else "Use " + (.tool_name // "a tool") end' <<< "$input" 2> /dev/null)
     ;;
-  question) state=blocked kind=question msg="Claude has a question" ;;
   notification)
     case $(jq -r '.notification_type // ""' <<< "$input" 2> /dev/null) in
       permission_prompt) state=blocked kind=permission ;;
@@ -43,6 +52,26 @@ if [[ -n $msg ]]; then
   report+=":msg=$(printf %s "$msg" | base64 | tr -d '\n')"
 fi
 sequence=$(printf '\033]7501;%s\033\\' "$report")
+
+# A macOS notification too, for the states Rex plays a sound for. Rex's own
+# activity notifications only come while it's in the background; one asked for
+# with OSC 777 comes even with Rex in front (Settings > Notifications > System
+# Notifications > Terminal notifications must be on).
+case $state in
+  blocked) what="Needs you" ;;
+  done) what="Finished" ;;
+  error) what="Failed" ;;
+  *) what="" ;;
+esac
+if [[ -n $what ]]; then
+  project=$(jq -r '.cwd // empty | split("/") | last' <<< "$input" 2> /dev/null)
+  title="Claude${project:+ · $project}"
+  body="$what${msg:+: $msg}"
+  # OSC 777 fields are split on ";" and must hold no control characters
+  title=$(jq -rn --arg m "$title" '$m | gsub("[[:cntrl:];]"; " ")')
+  body=$(jq -rn --arg m "$body" '$m | gsub("[[:cntrl:];]"; " ")')
+  sequence+=$(printf '\033]777;notify;%s;%s\033\\' "$title" "$body")
+fi
 
 # Claude's terminal: the controlling tty, else the first ancestor that has one
 claude_tty() {

@@ -1,5 +1,6 @@
 # Panes whose program has a status, most urgent first, for rex-activity
-# (dotfiles bin package). Entries are "display<TAB>session id<TAB>block id".
+# (dotfiles bin package). Entries are
+# "display<TAB>session id<TAB>block id<TAB>session › tab".
 
 [metadata]
 name = "rex-activity"
@@ -17,7 +18,13 @@ no_sort = true
 command = "rex-activity --preview '{split:\t:1}' '{split:\t:2}'"
 
 [ui]
-input_header = "Activity · Enter jumps to the pane"
+# lines run the full width, so the message isn't cut; the pane's screen below
+layout = "portrait"
+
+[ui.input_bar]
+header = "Activity · Enter jumps to the pane"
 
 [ui.preview_panel]
-size = 55
+size = 60
+# just where the pane is; the list line above already says the rest
+header = "{split:\t:3}"

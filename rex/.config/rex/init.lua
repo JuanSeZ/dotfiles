@@ -40,22 +40,33 @@ local function note_in(file, key, value)
   return entry[3]
 end
 
--- Notes the active window and the focused pane; returns the session's view,
--- the pane's window, that window's set of blocks and the pane before it
-local function note_focus(ctx)
-  local view = rex.session.view{}
-  if not (view and view.active_window_id) then return view end
-  note_in(window_history, ctx.session_id, view.active_window_id)
-  for _, w in ipairs(view.windows or {}) do
+-- The window holding block in view, and that window's set of blocks
+local function window_of(view, block)
+  for _, w in ipairs(view and view.windows or {}) do
     local blocks = {}
     for _, layer in ipairs(w.layers or {}) do
       for _, b in ipairs(layer.blocks or {}) do blocks[b.block_id] = true end
     end
-    if ctx.block_id and blocks[ctx.block_id] then
-      return view, w.window_id, blocks, note_in(pane_history, w.window_id, ctx.block_id)
-    end
+    if block and blocks[block] then return w.window_id, blocks end
   end
-  return view
+end
+
+-- Notes the focused pane and the window holding it, which is the tab the app
+-- shows (the server's active window can be another). Returns the session's
+-- view, that window, its set of blocks, the pane before and the window before.
+local function note_focus(ctx)
+  local view = rex.session.view{}
+  local window, blocks = window_of(view, ctx.block_id)
+  if not window then return view end
+  return view, window, blocks,
+    note_in(pane_history, window, ctx.block_id),
+    note_in(window_history, ctx.session_id, window)
+end
+
+-- Shows window in the app. session.focus_window and session.new_window only
+-- move the server's active window; the app keeps showing its own tab.
+local function show_window(session, window)
+  rex.client.queue("session.select", { session_id = session, window_id = window })
 end
 
 rex.action{
@@ -99,11 +110,11 @@ rex.bind("ctrl+b>l", "focus_pane", { direction = "right" })
 -- would walk every session's tabs), wrapping around at the ends as tmux does
 -- (Rex's focus_next_window stops there)
 local function cycle_window(ctx, step)
-  local view = note_focus(ctx)
+  local view, current = note_focus(ctx)
   local windows = view and view.windows or {}
   for i, w in ipairs(windows) do
-    if w.window_id == view.active_window_id then
-      rex.session.focus_window{ window_id = windows[(i - 1 + step) % #windows + 1].window_id }
+    if w.window_id == current then
+      show_window(ctx.session_id, windows[(i - 1 + step) % #windows + 1].window_id)
       return
     end
   end
@@ -125,12 +136,10 @@ rex.action{
   name = "last_window",
   title = "Last Window",
   run = function(ctx)
-    local view = rex.session.view{}
-    if not (view and view.active_window_id) then return end
-    local previous = note_in(window_history, ctx.session_id, view.active_window_id)
-    for _, w in ipairs(view.windows or {}) do
+    local view, _, _, _, previous = note_focus(ctx)
+    for _, w in ipairs(view and view.windows or {}) do
       if w.window_id == previous then
-        rex.session.focus_window{ window_id = previous }
+        show_window(ctx.session_id, previous)
         note_in(window_history, ctx.session_id, previous)
         return
       end
@@ -152,10 +161,11 @@ rex.action{
   title = "New Window in Session",
   run = function(ctx)
     note_focus(ctx)
-    local _, err = rex.session.new_window{
+    local w, err = rex.session.new_window{
       layout = rex.layout.block{ flavor = "com.superlogical.terminal.shell", options = { cwd = pane_dir(ctx) } },
     }
     if err ~= nil then error(err, 0) end
+    show_window(ctx.session_id, w.window_id)
   end,
 }
 rex.bind("ctrl+b>c", "new_window")
@@ -168,7 +178,7 @@ rex.bind("ctrl+b>shift+'", "split_pane", { direction = "down" })
 rex.bind("ctrl+b>z", "pane.zoom")
 rex.bind("ctrl+b>x", "pane.close")
 
--- Last session (tmux prefix + L). Rex keeps no session history, so each switch
+-- Last session (tmux prefix + L, on shift+tab here). Rex keeps no session history, so each switch
 -- made from a key notes the session it leaves, in a file that survives
 -- reloads: line 1 is the current session, line 2 the one before it.
 local history = os.getenv("HOME") .. "/.local/state/rex-last-session"
@@ -199,10 +209,11 @@ local function session_exists(session)
   return false
 end
 
-local function goto_session(from, session)
+-- window, if given, is the tab to show in session
+local function goto_session(from, session, window)
   note_session(from)
   note_session(session)
-  rex.client.queue("session.select", { session_id = session })
+  rex.client.queue("session.select", { session_id = session, window_id = window })
 end
 
 rex.action{
@@ -232,16 +243,15 @@ rex.action{
   title = "Go to Pane (noting the last session)",
   args = { session_id = "string", block_id = "string", from = "string?" },
   run = function(ctx, args)
-    -- the window left and the one reached in that session, for ctrl+b>tab
-    local function note_window()
-      local view = rex.call("session.view", { session_id = args.session_id })
-      if view and view.active_window_id then note_in(window_history, args.session_id, view.active_window_id) end
-    end
-    note_window()
+    local view = rex.call("session.view", { session_id = args.session_id })
+    local window = window_of(view, args.block_id)
+    if not window then error("no window holds " .. args.block_id, 0) end
+    -- the window left (as the server last saw it) and the one reached, for ctrl+b>tab
+    if view.active_window_id then note_in(window_history, args.session_id, view.active_window_id) end
+    note_in(window_history, args.session_id, window)
     local _, err = rex.call("session.focus_block", { session_id = args.session_id, block_id = args.block_id })
     if err ~= nil then error(err, 0) end
-    note_window()
-    goto_session(args.from or ctx.session_id, args.session_id)
+    goto_session(args.from or ctx.session_id, args.session_id, window)
   end,
 }
 -- Rex's session picker, noting the session it leaves
@@ -253,14 +263,29 @@ rex.action{
     rex.client.queue("session.switch")
   end,
 }
-rex.bind("ctrl+b>shift+l", "last_session")
+-- shift+tab, next to tab's last window: shift+l starts resizing right
+rex.bind("ctrl+b>shift+tab", "last_session")
 
--- tmux prefix + ctrl+h/j/k/l: resize the pane by 5. tmux's sticky resize table
--- isn't copied: a Rex mode would keep ctrl+h/j/k/l from Neovim until escape.
-rex.bind("ctrl+b>ctrl+h", "pane.resize", { amount = 5, direction = "left" })
-rex.bind("ctrl+b>ctrl+j", "pane.resize", { amount = 5, direction = "down" })
-rex.bind("ctrl+b>ctrl+k", "pane.resize", { amount = 5, direction = "up" })
-rex.bind("ctrl+b>ctrl+l", "pane.resize", { amount = 5, direction = "right" })
+-- Sticky resize: prefix + shift+h/j/k/l resizes the pane by 5 and stays
+-- resizing, so h/j/k/l (shift or not) keep going without the prefix. The mode
+-- is exclusive: every other key does nothing until esc, so nothing typed while
+-- resizing reaches the terminal.
+rex.mode("resize", { exclusive = true })
+rex.action{
+  name = "resize_sticky",
+  title = "Resize Pane and Keep Resizing",
+  args = { direction = "string" },
+  run = function(_, args)
+    rex.client.queue("pane.resize", { amount = 5, direction = args.direction })
+    rex.client.queue("client.mode.enter", { name = "resize" })
+  end,
+}
+for key, direction in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
+  rex.bind("ctrl+b>shift+" .. key, "resize_sticky", { direction = direction })
+  rex.bind("resize/" .. key, "pane.resize", { amount = 5, direction = direction })
+  rex.bind("resize/shift+" .. key, "pane.resize", { amount = 5, direction = direction })
+end
+rex.bind("resize/esc", "client.mode.exit")
 
 -- Copy mode (tmux prefix + [), see rex-copy-mode
 local copy_mode = os.getenv("HOME") .. "/.config/rex/bin/rex-copy-mode"

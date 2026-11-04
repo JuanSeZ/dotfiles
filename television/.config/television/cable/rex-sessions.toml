@@ -1,5 +1,5 @@
 # Rex sessions and project folders, for rex-sessionizer (dotfiles bin package).
-# Entries are "display<TAB>session id or folder path".
+# Entries are "display<TAB>session id or folder path<TAB>folder<TAB>place".
 
 [metadata]
 name = "rex-sessions"
@@ -16,18 +16,34 @@ display = "{split:\t:0}"
 output = "{split:\t:1}"
 
 [preview]
-command = "rex-sessionizer --preview '{split:\t:1}'"
+# ctrl+f cycles: git overview, then the session's screen or the folder's files
+command = [
+  "rex-sessionizer --git '{split:\t:2}'",
+  "rex-sessionizer --preview '{split:\t:1}'",
+]
 
 [ui]
-input_header = "Rex sessions"
+# lines run the full width, as in the activity picker; the preview below
+layout = "portrait"
+
+[ui.input_bar]
+header = "Sessions · enter open · ctrl+g lazygit · ctrl+f preview · ctrl+d kill"
 
 [ui.preview_panel]
-size = 55
+size = 60
+header = "{split:\t:3}"
 
 [keybindings]
 ctrl-d = ["actions:kill", "reload_source"]
+# lazygit, then a fresh list: its branch and change counts may have moved
+ctrl-g = ["actions:lazygit", "reload_source"]
 
 [actions.kill]
 description = "Kill the selected Rex session"
 command = "rex-sessionizer --kill '{split:\t:1}'"
+mode = "fork"
+
+[actions.lazygit]
+description = "lazygit on the folder, here in the popup; q comes back"
+command = "rex-sessionizer --lazygit '{split:\t:2}'"
 mode = "fork"

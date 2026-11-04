@@ -1,11 +1,15 @@
 # fzf configuration and shell integration.
 
+# OneDark Cool, the theme across the dotfiles (Ghostty's palette)
 export FZF_DEFAULT_OPTS="\
---color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
---color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
---color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
---color=selected-bg:#45475a \
+--color=bg+:#3e4452,bg:#242b38,spinner:#56b6c2,hl:#e06c75 \
+--color=fg:#abb2bf,header:#e06c75,info:#c678dd,pointer:#61afef \
+--color=marker:#98c379,fg+:#ffffff,prompt:#c678dd,hl+:#e06c75 \
+--color=selected-bg:#3e4452 \
 --multi"
+
+# bat has no OneDark Cool; OneHalfDark is the closest, as for delta in lazygit
+export BAT_THEME="OneHalfDark"
 
 _fzf_prefixes=()
 [[ -n "$HOMEBREW_PREFIX" ]] && _fzf_prefixes+=("$HOMEBREW_PREFIX")

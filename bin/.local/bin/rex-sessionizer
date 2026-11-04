@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 # Rex version of tmux-sessionizer: a floating popup running television's
-# rex-sessions channel, which lists open Rex sessions and project folders with
-# a preview. Enter switches to the session, creating it in the folder if
-# needed; ctrl+d kills a session; ctrl+s cycles All / Sessions / Folders.
+# rex-sessions channel, laid out like the activity picker. It lists open Rex
+# sessions (their tabs, their folder and git branch), then project folders.
+# The preview is a git overview of the folder; ctrl+f cycles to the session's
+# screen, or the folder's files.
+#
+# Enter switches to the session, creating it in the folder if needed; ctrl+g
+# opens lazygit on the folder right in the popup, and quitting it (q) comes
+# back to the list; ctrl+d kills a session; ctrl+s cycles All / Sessions /
+# Folders.
 #
 #   rex-sessionizer                                 popup over this pane (zsh ctrl+f)
 #   rex-sessionizer --popup SESSION BLOCK [CLIENT]  popup from Rex (ctrl+b>f)
 #   rex-sessionizer --pick [CLIENT]                 the picker, inside the popup
-#   rex-sessionizer --list [sessions|dirs]          television source
-#   rex-sessionizer --preview ENTRY                 television preview
+#   rex-sessionizer --list [sessions|dirs]          television source: "display<TAB>
+#                                                   session id or folder<TAB>dir<TAB>place"
+#   rex-sessionizer --git DIR                       television preview: git overview
+#   rex-sessionizer --preview ENTRY                 television preview: screen or files
+#   rex-sessionizer --lazygit DIR                   television ctrl+g
 #   rex-sessionizer --kill ENTRY                    television ctrl+d
 #
 # Switching needs Remote Control on (Rex Settings > Rex Server).
@@ -19,44 +28,113 @@ source "${BASH_SOURCE[0]%/*}/rex-common.sh"
 
 roots=(~ ~/.config ~/bdk ~/voyager ~/infra ~/university)
 
-# label<TAB>session id
-sessions() {
-  "$rex" ls --json | jq -r '.sessions[] | "\(.label)\t\(.session_id)"'
+# Every session: its tab count and the folder of the pane in front
+sessions_lua='
+local function path_of(url)
+  local path = (url or ""):gsub("^file://[^/]*", "")
+  return (path:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end))
+end
+local out = {}
+local list = rex.call("session.list", {})
+for _, s in ipairs(list and list.sessions or {}) do
+  rex.session.attach{ session_id = s.session_id }
+  local view = rex.call("session.view", { session_id = s.session_id }) or {}
+  local entry = { session_id = s.session_id, label = s.label, tabs = #(view.windows or {}), dir = "" }
+  for _, w in ipairs(view.windows or {}) do
+    for _, layer in ipairs(w.layers or {}) do
+      for _, b in ipairs(layer.blocks or {}) do
+        if w.window_id == view.active_window_id and b.block_id == w.focused_block_id then
+          local p = rex.block.call("com.superlogical.terminal", "pwd", { session_id = s.session_id, block_id = b.block_id })
+          entry.dir = path_of(p and p.pwd)
+        end
+      end
+    end
+  end
+  table.insert(out, entry)
+end
+return out'
+
+# Shared by both list formats
+jq_lib='
+def pad($n): if length >= $n then .[0:$n] else . + (" " * ($n - length)) end;
+def tilde($home): if startswith($home) then "~" + .[($home | length):] else . end;'
+
+# "main *3 ↑1 ↓2": branch, changed files, commits ahead and behind upstream
+git_summary() {
+  local dir=$1 branch changes counts behind ahead out
+  [[ -n $dir && -d $dir ]] || return 0
+  branch=$(git -C "$dir" symbolic-ref --short -q HEAD 2> /dev/null ||
+    git -C "$dir" rev-parse --short HEAD 2> /dev/null) || return 0
+  out=$branch
+  changes=$(git -C "$dir" status --porcelain 2> /dev/null | wc -l | tr -d ' ')
+  ((changes > 0)) && out+=" *$changes"
+  if counts=$(git -C "$dir" rev-list --left-right --count '@{upstream}...HEAD' 2> /dev/null); then
+    read -r behind ahead <<< "$counts"
+    ((ahead > 0)) && out+=" ↑$ahead"
+    ((behind > 0)) && out+=" ↓$behind"
+  fi
+  printf '%s' "$out"
 }
 
-# Entries are "display<TAB>session id or folder path"
 list() {
-  local what=${1:-all} labels label id dir name parent
-  labels=$(sessions)
+  local what=${1:-all} sessions_json labels
+  sessions_json=$("$rex" do -e "$sessions_lua" --json)
   if [[ $what != dirs ]]; then
-    while IFS=$'\t' read -r label id; do
-      [[ $id == "${REX_SESSION:-}" ]] && label="$label (current)"
-      printf '● %s\t%s\n' "$label" "$id"
-    done <<< "$labels"
+    jq -c '.[]' <<< "$sessions_json" | while read -r session; do
+      jq -r --arg git "$(git_summary "$(jq -r .dir <<< "$session")")" \
+        --arg current "${REX_SESSION:-}" --arg home "$HOME" "$jq_lib"'
+        (.dir | tilde($home)) as $where
+        | "\("● \(.label)\(if .session_id == $current then " (current)" else "" end)" | pad(28))  \("\(.tabs) tab\(if .tabs == 1 then "" else "s" end)" | pad(7))  \($where)\(if $git != "" then "  \($git)" else "" end)\t\(.session_id)\t\(.dir)\t\(if $where != "" then $where else .label end)"' <<< "$session"
+    done
   fi
   if [[ $what != sessions ]]; then
+    labels=$(jq -c '[.[].label]' <<< "$sessions_json")
     { find "${roots[@]}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null || true; } |
-      while read -r dir; do
-        name=$(basename "$dir" | tr . _)
+      jq -R -r --argjson labels "$labels" --arg home "$HOME" "$jq_lib"'
+        (split("/") | last | gsub("\\."; "_")) as $name
         # folders with an open session are listed as that session
-        cut -f1 <<< "$labels" | grep -qxF "$name" && continue
-        parent=${dir%/*}
-        printf '  %s  %s\t%s\n' "$name" "${parent/#$HOME/~}" "$dir"
-      done
+        | select($labels | index($name) | not)
+        | "\("  \($name)" | pad(28))  \("folder" | pad(7))  \(tilde($home))\t\(.)\t\(.)\t\(tilde($home))"'
   fi
 }
 
+# Branch, upstream, last commit, changes and recent history of DIR
+git_preview() {
+  local dir=$1 changes
+  if [[ -z $dir || ! -d $dir ]]; then
+    echo "No folder for this session yet"
+    return
+  fi
+  cd "$dir"
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    printf '\033[2mNot a git repository\033[0m\n\n'
+    CLICOLOR_FORCE=1 ls -pG
+    return
+  fi
+  git -c color.status=always status -sb | head -1
+  git log -1 --format='%C(dim)Last commit %cr by %an%C(reset)' 2> /dev/null || true
+  changes=$(git -c color.status=always status -s | head -15)
+  if [[ -n $changes ]]; then
+    printf '\n\033[1mChanges\033[0m\n%s\n' "$changes"
+  fi
+  printf '\n\033[1mRecent commits\033[0m\n'
+  git log --graph --color=always -n 20 \
+    --format='%C(yellow)%h%C(reset) %s %C(dim)%cr%C(reset)%C(auto)%d' 2> /dev/null || true
+}
+
+# The session's screen, or the folder's files
 preview() {
-  local entry=$1
+  local entry=$1 rows
   if [[ $entry == session:* ]]; then
+    # the bottom of its screen, as many lines as the preview shows (60% of
+    # the popup's rows, less the input bar, status line and borders)
+    rows=$(stty size < /dev/tty 2> /dev/null | cut -d' ' -f1)
+    rows=$(((${rows:-40} - 4) * 6 / 10 - 2))
+    ((rows < 8)) && rows=8
     # the session's focused block, not the popup's own
-    env -u REX_BLOCK "$rex" capture -s "$entry" --trim | tail -n 60
+    env -u REX_BLOCK "$rex" capture -s "$entry" --trim | tail -n "$rows"
   else
     cd "$entry" || exit 0
-    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-      git -c color.status=always status -sb | head -20
-      echo
-    fi
     CLICOLOR_FORCE=1 ls -pG
   fi
 }
@@ -67,18 +145,34 @@ kill_session() {
   "$rex" kill "$1" > /dev/null
 }
 
-switch() {
-  local entry=$1 client=${2:-} session name
+# The session for an entry: itself, or the folder's, created if needed
+session_for() {
+  local entry=$1 name session
   if [[ $entry == session:* ]]; then
-    session=$entry
-  else
-    name=$(basename "$entry" | tr . _)
-    session=$("$rex" ls --json | jq -r --arg n "$name" 'first(.sessions[] | select(.label == $n) | .session_id) // empty')
-    [[ -n $session ]] || session=$("$rex" new "$name" -c "$entry" --json | jq -r '.session_id')
+    echo "$entry"
+    return
   fi
+  name=$(basename "$entry" | tr . _)
+  session=$("$rex" ls --json | jq -r --arg n "$name" 'first(.sessions[] | select(.label == $n) | .session_id) // empty')
+  [[ -n $session ]] || session=$("$rex" new "$name" -c "$entry" --json | jq -r '.session_id')
+  echo "$session"
+}
+
+switch() {
+  local session client=${2:-}
+  session=$(session_for "$1")
   [[ -n $client ]] || client=$(app_client)
-  # init.lua's goto_session also notes the session left, for ctrl+b>shift+l
+  # init.lua's goto_session also notes the session left, for ctrl+b>shift+tab
   "$rex" -C "$client" do goto_session session_id="$session" from="${REX_SESSION:-}" > /dev/null
+}
+
+# lazygit on DIR, in the popup itself: tv runs this in fork mode and comes
+# back to the list when lazygit quits. tv's own stdout is the picker's result
+# pipe, so lazygit gets the terminal directly. Not a git repository: nothing.
+lazygit_here() {
+  local dir=$1
+  git -C "$dir" rev-parse --is-inside-work-tree > /dev/null 2>&1 || return 0
+  (cd "$dir" && lazygit < /dev/tty > /dev/tty 2>&1) || true
 }
 
 pick() {
@@ -101,7 +195,9 @@ case ${1:-} in
   --popup) popup "$2" "${3:-}" "${4:-}" ;;
   --pick) pick "${2:-}" ;;
   --list) list "${2:-all}" ;;
+  --git) git_preview "${2:-}" ;;
   --preview) preview "$2" ;;
+  --lazygit) lazygit_here "${2:-}" ;;
   --kill) kill_session "$2" ;;
   *) popup "${REX_SESSION:?run this inside Rex}" "${REX_BLOCK:-}" ;;
 esac

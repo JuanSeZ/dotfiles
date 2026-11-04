@@ -1,0 +1,26 @@
+# OneDark Cool, the theme across the dotfiles (Ghostty, Rex, tmux, Neovim,
+# lazygit, fzf...): television's onedark.toml on Cool's #242b38 background.
+# general
+background = '#242b38'
+border_fg = '#5c6370'
+text_fg = '#abb2bf'
+dimmed_text_fg = '#c678dd'
+# input
+input_text_fg = '#e06c75'
+result_count_fg = '#e06c75'
+# results
+result_name_fg = '#61afef'
+result_line_number_fg = '#e5c07b'
+result_value_fg = '#abb2bf'
+selection_fg = '#98c379'
+selection_bg = '#3e4452'
+match_fg = '#e06c75'
+# preview
+preview_title_fg = '#61afef'
+# modes
+channel_mode_fg = '#242b38'
+channel_mode_bg = '#61afef'
+remote_control_mode_fg = '#242b38'
+remote_control_mode_bg = '#98c379'
+action_picker_mode_fg = '#242b38'
+action_picker_mode_bg = '#c678dd'

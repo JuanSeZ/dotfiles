@@ -34,6 +34,23 @@ defaults:
       author:
         hidden: true
 
+# OneDark Cool, the theme across the dotfiles (Ghostty's palette)
+theme:
+  colors:
+    text:
+      primary: "#abb2bf"
+      secondary: "#61afef"
+      inverted: "#242b38"
+      faint: "#5c6370"
+      warning: "#e5c07b"
+      success: "#98c379"
+    background:
+      selected: "#3e4452"
+    border:
+      primary: "#5c6370"
+      secondary: "#3e4452"
+      faint: "#2d3343"
+
 keybindings:
   prs:
     - key: H

@@ -1,0 +1,4 @@
+# Only what differs from tv's defaults, which fill in the rest (so new defaults
+# from tv upgrades still arrive). OneDark Cool is the theme across the dotfiles.
+[ui]
+theme = "onedark-cool"

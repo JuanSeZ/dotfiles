@@ -7,7 +7,8 @@
 #
 #   rex-activity --popup SESSION BLOCK [CLIENT]  popup from Rex (ctrl+b>a)
 #   rex-activity --pick [CLIENT]                 the picker, inside the popup
-#   rex-activity --list                          television source
+#   rex-activity --list                          television source: "display<TAB>
+#                                                session id<TAB>block id<TAB>place"
 #   rex-activity --preview SESSION BLOCK         television preview
 #
 # Jumping to another session needs Remote Control on (Rex Settings > Rex Server).
@@ -75,12 +76,20 @@ list() {
     | ($name[.app] // .app) as $app
     # titles can start with a spinner glyph, such as Claude'"'"'s "◑"
     | (if .msg != "" then .msg else (.title | sub("^[^[:alnum:]]+"; "")) end) as $what
-    | "\($word[.state] // .state | pad(10))  \($app | pad(7))  \("\(.session) › \($tab)" | pad(24))  \($what)\(if .updated_at != "" then "  ·  \(.updated_at | ago)" else "" end)\t\(.session_id)\t\(.block_id)"'
+    | "\($word[.state] // .state | pad(10))  \($app | pad(7))  \("\(.session) › \($tab)" | pad(24))  \($what)\(if .updated_at != "" then "  ·  \(.updated_at | ago)" else "" end)\t\(.session_id)\t\(.block_id)\t\(.session) › \($tab)"'
 }
 
 preview() {
   # the pane's screen, not the popup's own
-  env -u REX_BLOCK "$rex" capture -s "$1" -b "$2" --trim | tail -n 60
+  # The bottom of its screen, where a prompt waits, in as many lines as the
+  # preview shows: tv draws from the top and cuts what doesn't fit. The
+  # preview gets 60% of the popup's rows (rex-activity.toml), less the input
+  # bar, status line and borders.
+  local rows
+  rows=$(stty size < /dev/tty 2> /dev/null | cut -d' ' -f1)
+  rows=$(((${rows:-40} - 4) * 6 / 10 - 2))
+  ((rows < 8)) && rows=8
+  env -u REX_BLOCK "$rex" capture -s "$1" -b "$2" --trim | tail -n "$rows"
 }
 
 pick() {

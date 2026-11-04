@@ -24,7 +24,15 @@ vim.g.maplocalleader = "\\"
 -- Setup lazy.nvim
 require("lazy").setup({
   spec = {
-    { "folke/tokyonight.nvim", config = function() vim.cmd.colorscheme "tokyonight" end },
+    -- OneDark Cool, the theme across the dotfiles (Ghostty, Rex, tmux, lazygit...)
+    {
+      "navarasu/onedark.nvim",
+      priority = 1000,
+      config = function()
+        require("onedark").setup({ style = "cool" })
+        require("onedark").load()
+      end,
+    },
     { import = "config.plugins" },
   },
 })
