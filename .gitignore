@@ -4,5 +4,9 @@ zsh/.config/zsh/local.zsh
 # Generated zsh completion caches
 zsh/.zcompdump*
 
+# television writes its default config on first run; ~/.config/television is
+# stowed, so it lands here. Only the cable channels are ours.
+television/.config/television/config.toml
+
 # Local scratch/plans
 /tmp/

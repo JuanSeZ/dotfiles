@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Opens a centred floating layer over BLOCK's window in SESSION, running
+# COMMAND directly (no shell). Used by rex-sessionizer and rex-activity.
+#
+#   rex-popup SESSION BLOCK LABEL COMMAND...
+set -euo pipefail
+
+# PATH and $rex
+source "${BASH_SOURCE[0]%/*}/rex-common.sh"
+
+session=$1 block=$2 label=$3
+shift 3
+
+window=$("$rex" api call -s "$session" session.view | jq -r --arg b "$block" '
+  first(.windows[] | select(any(.layers[]?.blocks[]?; .block_id == $b)) | .window_id)
+  // .windows[0].window_id')
+
+# COMMAND as a JSON array; jq would read arguments such as --pick as its own options
+command=$(printf '%s\0' "$@" | jq -Rs 'split("\u0000")[:-1]')
+
+jq -n --arg s "$session" --arg w "$window" --arg l "$label" --argjson c "$command" '{
+  session_id: $s, window_id: $w, bounds: [0.15, 0.1, 0.7, 0.8], focus: true,
+  layout: {block: {
+    flavor: "com.superlogical.terminal.shell", label: $l,
+    options: {shell: "none", command: $c}
+  }}
+}' | "$rex" api call -s "$session" session.new_layer - > /dev/null

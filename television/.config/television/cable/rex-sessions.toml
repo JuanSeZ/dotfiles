@@ -1,0 +1,33 @@
+# Rex sessions and project folders, for rex-sessionizer (dotfiles bin package).
+# Entries are "display<TAB>session id or folder path".
+
+[metadata]
+name = "rex-sessions"
+description = "Switch to a Rex session, or open one in a project folder"
+requirements = ["rex-sessionizer"]
+
+[source]
+command = [
+  { name = "All", run = "rex-sessionizer --list" },
+  { name = "Sessions", run = "rex-sessionizer --list sessions" },
+  { name = "Folders", run = "rex-sessionizer --list dirs" },
+]
+display = "{split:\t:0}"
+output = "{split:\t:1}"
+
+[preview]
+command = "rex-sessionizer --preview '{split:\t:1}'"
+
+[ui]
+input_header = "Rex sessions"
+
+[ui.preview_panel]
+size = 55
+
+[keybindings]
+ctrl-d = ["actions:kill", "reload_source"]
+
+[actions.kill]
+description = "Kill the selected Rex session"
+command = "rex-sessionizer --kill '{split:\t:1}'"
+mode = "fork"

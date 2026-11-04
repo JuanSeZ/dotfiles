@@ -1,0 +1,23 @@
+# Panes whose program has a status, most urgent first, for rex-activity
+# (dotfiles bin package). Entries are "display<TAB>session id<TAB>block id".
+
+[metadata]
+name = "rex-activity"
+description = "Jump to a pane by its program's activity (Rex program status)"
+requirements = ["rex-activity"]
+
+[source]
+command = "rex-activity --list"
+display = "{split:\t:0}"
+output = "{split:\t:1} {split:\t:2}"
+# keep the urgency order when nothing is typed
+no_sort = true
+
+[preview]
+command = "rex-activity --preview '{split:\t:1}' '{split:\t:2}'"
+
+[ui]
+input_header = "Activity · Enter jumps to the pane"
+
+[ui.preview_panel]
+size = 55

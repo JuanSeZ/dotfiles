@@ -7,10 +7,12 @@ brew "zsh"
 brew "starship"
 brew "zoxide"
 brew "fzf"
+brew "television"
 brew "tmux"
 brew "gh"
 brew "lazygit"
 brew "git-delta"
+brew "jq"
 
 # Editors / development
 brew "neovim"

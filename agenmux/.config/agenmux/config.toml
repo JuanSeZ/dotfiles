@@ -1,0 +1,8 @@
+# agenmux config. Every key is optional; see
+# https://github.com/snirt/agenmux/blob/main/examples/config.toml
+version = 1
+
+[behavior]
+# The version is pinned in tmux/.tmux.conf (@plugin 'snirt/agenmux#vX.Y.Z').
+# Upgrade on purpose with U in the sidebar instead of daily background downloads.
+auto_update = false

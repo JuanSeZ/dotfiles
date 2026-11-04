@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Activity picker for Rex: a floating popup running television's rex-activity
+# channel, which lists every pane whose program has a status, most urgent
+# first: blocked, error, done, working, idle. Statuses come from Rex's Program
+# Status Protocol (OSC 7501): Codex reports it itself, Claude Code through the
+# rex-claude-status hooks. Enter jumps to the pane.
+#
+#   rex-activity --popup SESSION BLOCK [CLIENT]  popup from Rex (ctrl+b>a)
+#   rex-activity --pick [CLIENT]                 the picker, inside the popup
+#   rex-activity --list                          television source
+#   rex-activity --preview SESSION BLOCK         television preview
+#
+# Jumping to another session needs Remote Control on (Rex Settings > Rex Server).
+set -euo pipefail
+
+# PATH, $rex and app_client
+source "${BASH_SOURCE[0]%/*}/rex-common.sh"
+
+# Every placed block, with its place and the latest status Rex has for it
+blocks_lua='
+local out = {}
+local list = rex.call("session.list", {})
+for _, s in ipairs(list and list.sessions or {}) do
+  rex.session.attach{ session_id = s.session_id }
+  local view = rex.call("session.view", { session_id = s.session_id })
+  for wi, w in ipairs(view and view.windows or {}) do
+    for _, layer in ipairs(w.layers or {}) do
+      for _, b in ipairs(layer.blocks or {}) do
+        local at = { session_id = s.session_id, block_id = b.block_id }
+        local st = rex.block.call("com.superlogical.terminal", "program_status", at)
+        local latest
+        for _, r in ipairs(st and st.records or {}) do
+          if not latest or r.updated_at > latest.updated_at then latest = r end
+        end
+        local title = rex.block.call("com.superlogical.terminal", "title", at)
+        table.insert(out, {
+          session_id = s.session_id, session = s.label,
+          window = wi, window_label = w.label or "",
+          block_id = b.block_id, title = title and title.title or "",
+          state = latest and latest.state or "",
+          app = latest and (latest.effective_app or latest.app) or "",
+          msg = latest and latest.msg or "",
+          updated_at = latest and latest.updated_at or "",
+        })
+      end
+    end
+  end
+end
+return out'
+
+# Entries are "display<TAB>session id<TAB>block id"
+list() {
+  "$rex" do -e "$blocks_lua" --json | jq -r '
+    def pad($n): if length >= $n then .[0:$n] else . + (" " * ($n - length)) end;
+    # "2026-11-03T23:16:42.48-03:00" (or ending in Z) -> "5m ago"
+    def offset: if endswith("Z") then 0 else
+      (.[-6:-5] | if . == "-" then -1 else 1 end) * ((.[-5:-3] | tonumber) * 3600 + (.[-2:] | tonumber) * 60) end;
+    def ago:
+      if . == "" then "" else
+        ((.[0:19] + "Z" | fromdateiso8601) - offset) as $at
+        | (now - $at) | floor
+        | if . < 60 then "just now" elif . < 3600 then "\(. / 60 | floor)m ago"
+          elif . < 86400 then "\(. / 3600 | floor)h ago" else "\(. / 86400 | floor)d ago" end
+      end;
+    {blocked: 0, error: 1, done: 2, working: 3, idle: 4} as $rank
+    | {blocked: "Needs you", error: "Failed", done: "Finished", working: "Working", idle: "Idle"} as $word
+    | {"claude-code": "Claude", claude: "Claude", codex: "Codex"} as $name
+    | [.[] | select(.state != "")]
+    | sort_by($rank[.state] // 5, .updated_at)
+    | group_by($rank[.state] // 5) | map(reverse) | add // []
+    | .[]
+    # a window label Rex made up ("Window 2174490e") says less than its tab number
+    | (if (.window_label | test("^Window [0-9a-f]+$")) or .window_label == "" then "tab \(.window)"
+       else .window_label end) as $tab
+    | ($name[.app] // .app) as $app
+    # titles can start with a spinner glyph, such as Claude'"'"'s "◑"
+    | (if .msg != "" then .msg else (.title | sub("^[^[:alnum:]]+"; "")) end) as $what
+    | "\($word[.state] // .state | pad(10))  \($app | pad(7))  \("\(.session) › \($tab)" | pad(24))  \($what)\(if .updated_at != "" then "  ·  \(.updated_at | ago)" else "" end)\t\(.session_id)\t\(.block_id)"'
+}
+
+preview() {
+  # the pane's screen, not the popup's own
+  env -u REX_BLOCK "$rex" capture -s "$1" -b "$2" --trim | tail -n 60
+}
+
+pick() {
+  local choice session block client=${1:-}
+  choice=$(tv rex-activity) || exit 0
+  read -r session block <<< "$choice"
+  [[ $session == session:* && $block == block:* ]] || exit 0
+  [[ -n $client ]] || client=$(app_client)
+  # init.lua's goto_block focuses the pane and notes the session left
+  if ! "$rex" -C "$client" do goto_block session_id="$session" block_id="$block" from="${REX_SESSION:-}" > /dev/null 2>&1; then
+    echo "Rex refused the jump: turn on Remote Control in Rex Settings > Rex Server."
+    read -rsn1 -p "Press any key to close."
+  fi
+}
+
+case ${1:-} in
+  --popup) rex-popup "$2" "${3:-}" activity "$0" --pick "${4:-}" ;;
+  --pick) pick "${2:-}" ;;
+  --list) list ;;
+  --preview) preview "$2" "$3" ;;
+  *) rex-popup "${REX_SESSION:?run this inside Rex}" "${REX_BLOCK:-}" activity "$0" --pick ;;
+esac

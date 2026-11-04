@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Rex version of tmux-sessionizer: a floating popup running television's
+# rex-sessions channel, which lists open Rex sessions and project folders with
+# a preview. Enter switches to the session, creating it in the folder if
+# needed; ctrl+d kills a session; ctrl+s cycles All / Sessions / Folders.
+#
+#   rex-sessionizer                                 popup over this pane (zsh ctrl+f)
+#   rex-sessionizer --popup SESSION BLOCK [CLIENT]  popup from Rex (ctrl+b>f)
+#   rex-sessionizer --pick [CLIENT]                 the picker, inside the popup
+#   rex-sessionizer --list [sessions|dirs]          television source
+#   rex-sessionizer --preview ENTRY                 television preview
+#   rex-sessionizer --kill ENTRY                    television ctrl+d
+#
+# Switching needs Remote Control on (Rex Settings > Rex Server).
+set -euo pipefail
+
+# PATH, $rex and app_client
+source "${BASH_SOURCE[0]%/*}/rex-common.sh"
+
+roots=(~ ~/.config ~/bdk ~/voyager ~/infra ~/university)
+
+# label<TAB>session id
+sessions() {
+  "$rex" ls --json | jq -r '.sessions[] | "\(.label)\t\(.session_id)"'
+}
+
+# Entries are "display<TAB>session id or folder path"
+list() {
+  local what=${1:-all} labels label id dir name parent
+  labels=$(sessions)
+  if [[ $what != dirs ]]; then
+    while IFS=$'\t' read -r label id; do
+      [[ $id == "${REX_SESSION:-}" ]] && label="$label (current)"
+      printf '● %s\t%s\n' "$label" "$id"
+    done <<< "$labels"
+  fi
+  if [[ $what != sessions ]]; then
+    { find "${roots[@]}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null || true; } |
+      while read -r dir; do
+        name=$(basename "$dir" | tr . _)
+        # folders with an open session are listed as that session
+        cut -f1 <<< "$labels" | grep -qxF "$name" && continue
+        parent=${dir%/*}
+        printf '  %s  %s\t%s\n' "$name" "${parent/#$HOME/~}" "$dir"
+      done
+  fi
+}
+
+preview() {
+  local entry=$1
+  if [[ $entry == session:* ]]; then
+    # the session's focused block, not the popup's own
+    env -u REX_BLOCK "$rex" capture -s "$entry" --trim | tail -n 60
+  else
+    cd "$entry" || exit 0
+    if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+      git -c color.status=always status -sb | head -20
+      echo
+    fi
+    CLICOLOR_FORCE=1 ls -pG
+  fi
+}
+
+kill_session() {
+  # never the session the popup is in: that would close the picker
+  [[ $1 == session:* && $1 != "${REX_SESSION:-}" ]] || return 0
+  "$rex" kill "$1" > /dev/null
+}
+
+switch() {
+  local entry=$1 client=${2:-} session name
+  if [[ $entry == session:* ]]; then
+    session=$entry
+  else
+    name=$(basename "$entry" | tr . _)
+    session=$("$rex" ls --json | jq -r --arg n "$name" 'first(.sessions[] | select(.label == $n) | .session_id) // empty')
+    [[ -n $session ]] || session=$("$rex" new "$name" -c "$entry" --json | jq -r '.session_id')
+  fi
+  [[ -n $client ]] || client=$(app_client)
+  # init.lua's goto_session also notes the session left, for ctrl+b>shift+l
+  "$rex" -C "$client" do goto_session session_id="$session" from="${REX_SESSION:-}" > /dev/null
+}
+
+pick() {
+  local choice
+  choice=$(tv rex-sessions) || exit 0
+  # with no match, tv returns the typed text (say ":q"): not a session or folder
+  [[ $choice == session:* || -d $choice ]] || exit 0
+  if ! switch "$choice" "${1:-}" 2> /dev/null; then
+    echo "Rex refused the switch: turn on Remote Control in Rex Settings > Rex Server."
+    read -rsn1 -p "Press any key to close."
+  fi
+}
+
+# A centred floating layer over BLOCK's window, running the picker
+popup() {
+  rex-popup "$1" "${2:-}" sessionizer "$0" --pick "${3:-}"
+}
+
+case ${1:-} in
+  --popup) popup "$2" "${3:-}" "${4:-}" ;;
+  --pick) pick "${2:-}" ;;
+  --list) list "${2:-all}" ;;
+  --preview) preview "$2" ;;
+  --kill) kill_session "$2" ;;
+  *) popup "${REX_SESSION:?run this inside Rex}" "${REX_BLOCK:-}" ;;
+esac

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Copy mode for Rex, in place of tmux's prefix + [: opens a block's scrollback
+# in Neovim on a layer over its window. v selects, y copies to the macOS
+# clipboard, q closes. init.lua runs it from ctrl+b>[ with the session and block.
+set -euo pipefail
+
+# Rex actions start with a bare PATH
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+if [[ ${1:-} == --view ]]; then
+  nvim -R -n + -c 'set clipboard=unnamedplus nomodifiable' -c 'nnoremap <buffer> q <cmd>qa!<cr>' "$2"
+  rm -f "$2"
+  exit
+fi
+
+session=$1 block=$2
+rex="${REX_BIN_DIR:-$HOME/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS}/rex"
+
+file=$(mktemp -t rex-copy-mode)
+trap 'rm -f "$file"' ERR
+"$rex" capture -s "$session" -b "$block" --trim --unwrap > "$file"
+
+window=$("$rex" api call -s "$session" session.view |
+  jq -r --arg b "$block" '.windows[] | select(any(.layers[]?.blocks[]?; .block_id == $b)) | .window_id')
+
+jq -n --arg s "$session" --arg w "$window" --arg self "$0" --arg f "$file" '{
+  session_id: $s, window_id: $w, bounds: [0, 0, 1, 1], focus: true,
+  layout: {block: {
+    flavor: "com.superlogical.terminal.shell", label: "copy-mode",
+    options: {shell: "none", command: [$self, "--view", $f]}
+  }}
+}' | "$rex" api call -s "$session" session.new_layer - > /dev/null

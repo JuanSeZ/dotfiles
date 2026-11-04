@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Reports Claude Code's state to Rex with the Program Status Protocol (OSC 7501),
+# so Rex's tab spinners, sidebar activity and notifications cover Claude the way
+# they cover Codex, which reports it itself. Claude Code runs this from hooks in
+# ~/.claude/settings.json, with the hook's JSON on stdin:
+#
+#   rex-claude-status working|done|idle|error|clear
+#   rex-claude-status permission     PermissionRequest: blocked on an approval
+#   rex-claude-status question       PreToolUse on AskUserQuestion: blocked on an answer
+#   rex-claude-status notification   Notification: blocked if it asks for something
+#
+# It prints nothing and always exits 0, so it never changes what Claude does.
+
+# Only inside Rex; other terminals would ignore the sequence anyway
+[[ -n ${REX_SESSION:-} ]] || exit 0
+input=$(cat)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+state=${1:-} kind="" msg=""
+case $state in
+  working | done | idle | error | clear) ;;
+  permission)
+    state=blocked kind=permission
+    msg="Permission to use $(jq -r '.tool_name // "a tool"' <<< "$input" 2> /dev/null)"
+    ;;
+  question) state=blocked kind=question msg="Claude has a question" ;;
+  notification)
+    case $(jq -r '.notification_type // ""' <<< "$input" 2> /dev/null) in
+      permission_prompt) state=blocked kind=permission ;;
+      elicitation_dialog) state=blocked kind=question ;;
+      *) exit 0 ;; # idle reminders and the like change nothing
+    esac
+    msg=$(jq -r '.message // ""' <<< "$input" 2> /dev/null)
+    ;;
+  *) exit 0 ;;
+esac
+
+report="state=$state:app=claude-code"
+[[ -n $kind ]] && report+=":kind=$kind"
+if [[ -n $msg ]]; then
+  # one line without control characters, as standard base64
+  msg=$(jq -rn --arg m "$msg" '$m | gsub("[[:cntrl:]]"; " ") | .[0:200]')
+  report+=":msg=$(printf %s "$msg" | base64 | tr -d '\n')"
+fi
+sequence=$(printf '\033]7501;%s\033\\' "$report")
+
+# Claude's terminal: the controlling tty, else the first ancestor that has one
+claude_tty() {
+  local pid=$PPID tty
+  while [[ -n $pid && $pid -gt 1 ]]; do
+    tty=$(ps -o tty= -p "$pid" 2> /dev/null | tr -d ' ')
+    [[ -n $tty && $tty != "??" ]] && { echo "/dev/$tty"; return; }
+    pid=$(ps -o ppid= -p "$pid" 2> /dev/null | tr -d ' ')
+  done
+  return 1
+}
+{ printf %s "$sequence" > /dev/tty; } 2> /dev/null ||
+  { tty=$(claude_tty) && printf %s "$sequence" > "$tty"; } 2> /dev/null
+exit 0
